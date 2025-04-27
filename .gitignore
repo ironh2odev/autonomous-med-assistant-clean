@@ -1,0 +1,39 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.so
+
+# Environment files
+.env
+.env.template
+*.env
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# VSCode settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Uploaded files / temp
+data/uploads/
+data/temp_image.png
+
+# Dependency folders
+.venv/
+env/
+venv/
+
+# Logs
+*.log
+*.out
+
+# Streamlit cache
+.streamlit/
+.streamlit/config.toml
+
+# Pytest cache
+.pytest_cache/

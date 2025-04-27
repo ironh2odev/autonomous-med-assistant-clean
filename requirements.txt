@@ -1,0 +1,45 @@
+# Core ML/AI
+torch
+torchvision
+transformers
+scikit-learn
+sentence-transformers
+faiss-cpu
+torch
+torchvision
+timm
+
+# Vision / Image
+Pillow
+matplotlib
+
+# LLM & RAG tools
+llama-index
+openai
+langchain
+tiktoken
+
+# GNN
+dgl
+networkx
+
+# RL
+gym
+stable-baselines3
+
+# UI/Backend
+streamlit
+fastapi
+uvicorn
+python-multipart
+flask
+flask-cors
+requests
+
+# Dev + Utils
+python-dotenv
+watchdog
+requests
+
+# Testing
+pytest

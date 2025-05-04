@@ -1,39 +1,38 @@
-# Byte-compiled / cache
+# === Python bytecode ===
 __pycache__/
 *.py[cod]
 *.so
 
-# Environment files
+# === Environment files ===
 .env
 .env.template
 *.env
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
+# === Virtual environments ===
+.venv/
+venv/
+env/
+.venv_backup/
 
-# VSCode settings
-.vscode/
-
-# OS files
+# === OS + Editor files ===
 .DS_Store
 Thumbs.db
+.vscode/
 
-# Uploaded files / temp
-data/uploads/
-data/temp_image.png
+# === Jupyter Notebooks ===
+.ipynb_checkpoints/
 
-# Dependency folders
-.venv/
-env/
-venv/
-
-# Logs
-*.log
-*.out
-
-# Streamlit cache
+# === Streamlit cache ===
 .streamlit/
 .streamlit/config.toml
 
-# Pytest cache
+# === Logs ===
+*.log
+*.out
+
+# === Pytest cache ===
 .pytest_cache/
+
+# === Uploaded files ===
+data/uploads/
+data/temp_image.png

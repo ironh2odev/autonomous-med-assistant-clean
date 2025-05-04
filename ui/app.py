@@ -9,18 +9,27 @@ import requests
 from PIL import Image
 import io
 
-# Load environment variables
+# === Load environment variables ===
 load_dotenv(override=True)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from utils.explainer import explain_diagnosis
-from utils.medical_agent import get_medical_consultation
+from utils.medical_agent import consult_symptoms
 
-# === Streamlit Config ===
-st.set_page_config(page_title="AI Medical Diagnosis Assistant", layout="centered")
+# === Config ===
+API_BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000/diagnose")
+LOG_FILE = os.getenv("LOG_FILE", "data/diagnosis_log.csv")
+LOGO_PATH = os.getenv("LOGO_PATH", "assets/logo.png")
 
-# === Sidebar Navigation ===
-st.sidebar.image("assets/logo.png", width=150)
+st.set_page_config(
+    page_title="AI Medical Diagnosis Assistant",
+    page_icon="🩺",
+    layout="centered"
+)
+
+# === Sidebar ===
+st.sidebar.image(LOGO_PATH, width=100)
+st.sidebar.markdown("<br>", unsafe_allow_html=True)
 st.sidebar.title("🧭 Navigation")
 
 page = st.sidebar.radio(
@@ -30,8 +39,7 @@ page = st.sidebar.radio(
 
 st.sidebar.markdown(f"📍 **Current Page:** {page}")
 
-# === Page Routing ===
-
+# === Upload X-ray Page ===
 if page == "🩻 Upload X-ray":
     st.markdown("<h1 style='text-align: center;'>🩻 Autonomous AI Medical Diagnosis Assistant</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center;'>Upload a chest X-ray image to receive an AI-generated diagnosis.</p>", unsafe_allow_html=True)
@@ -48,14 +56,12 @@ if page == "🩻 Upload X-ray":
 
         with st.spinner("Please wait while the AI doctor reviews..."):
             try:
-                backend_url = os.getenv("BACKEND_URL", "http://localhost:8000/diagnose")
-                response = requests.post(backend_url, files={"file": (uploaded_file.name, file_bytes, uploaded_file.type)})
+                response = requests.post(API_BACKEND_URL, files={"file": (uploaded_file.name, file_bytes, uploaded_file.type)})
 
                 if response.status_code == 200:
                     result = response.json()
-
                     st.balloons()
-                    st.success("✅ Diagnosis Complete!")
+                    st.success("✅ Diagnosis complete!")
 
                     st.markdown(f"### 🏷️ **Diagnosis:** `{result['diagnosis']}`")
                     st.info(f"📊 **Confidence:** `{result['confidence'] * 100:.2f}%`")
@@ -72,17 +78,18 @@ if page == "🩻 Upload X-ray":
 
                     st.divider()
                     if st.button("📤 Upload Another X-ray"):
-                        st.experimental_rerun()
+                        st.rerun()  # ✅ updated here
 
                 else:
-                    st.error(f"❌ Backend Error: {response.status_code} - {response.text}")
+                    st.error(f"❌ Backend error {response.status_code}: {response.text}")
 
             except Exception as e:
-                st.error(f"🚨 Request Failed: {e}")
+                st.error(f"🚨 Request failed: {e}")
 
+# === Symptom Consultation Page ===
 elif page == "📝 Symptom Consultation":
     st.markdown("<h1 style='text-align: center;'>🩺 AI Medical Consultation</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center;'>Describe your symptoms and receive preliminary AI-driven medical advice. (This does not replace a doctor's consultation.)</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>Describe your symptoms for preliminary advice (⚠️ does not replace a doctor).</p>", unsafe_allow_html=True)
 
     symptoms = st.text_area("📝 Describe your symptoms:")
 
@@ -91,15 +98,16 @@ elif page == "📝 Symptom Consultation":
             st.warning("⚠️ Please enter some symptoms.")
         else:
             with st.spinner("Analyzing your symptoms..."):
-                advice = get_medical_consultation(symptoms)
-                st.success("✅ Preliminary Medical Advice:")
+                advice = consult_symptoms(symptoms)
+                st.success("✅ Preliminary medical advice:")
                 st.markdown(f"💬 {advice}")
 
+# === View Past Diagnoses Page ===
 elif page == "📜 View Past Diagnoses":
     st.markdown("<h1 style='text-align: center;'>📜 Diagnosis History</h1>", unsafe_allow_html=True)
 
-    if os.path.exists("data/diagnosis_log.csv"):
-        df = pd.read_csv("data/diagnosis_log.csv")
+    if os.path.exists(LOG_FILE):
+        df = pd.read_csv(LOG_FILE)
 
         if not df.empty:
             if "image_path" in df.columns:
@@ -108,7 +116,7 @@ elif page == "📜 View Past Diagnoses":
                 st.dataframe(df)
 
             selected_timestamp = st.selectbox(
-                "Select a Timestamp to View Image:",
+                "Select a timestamp to view image:",
                 df["timestamp"].tolist()
             )
 
@@ -120,6 +128,21 @@ elif page == "📜 View Past Diagnoses":
                     st.image(image, caption=f"🕒 {selected_timestamp}", use_container_width=True)
                 else:
                     st.warning("🕵️ This entry was created before image saving was implemented.")
+
+            st.markdown("---")
+            csv_data = df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Diagnosis Log CSV",
+                data=csv_data,
+                file_name="diagnosis_log.csv",
+                mime="text/csv",
+            )
+
+            if st.button("🗑️ Delete All Diagnoses"):
+                os.remove(LOG_FILE)
+                st.warning("🗑️ Diagnosis history deleted.")
+                st.rerun()  # ✅ updated here
+
         else:
             st.info("🕊️ No diagnoses logged yet.")
     else:

@@ -1,5 +1,2 @@
 filename,diagnosis,confidence,timestamp,image_path
-xray_20250425_171812.png,Pneumonia,0.17,2025-04-25 17:18:12,data/uploads/xray_20250425_171812.png
-xray_20250425_175308.png,Pneumonia,0.17,2025-04-25 17:53:08,data/uploads/xray_20250425_175308.png
-xray_20250427_021620.png,Consolidation,0.71,2025-04-27 02:16:20,data/uploads/xray_20250427_021620.png
-xray_20250427_023918.png,Mass,0.64,2025-04-27 02:39:18,data/uploads/xray_20250427_023918.png
+xray_20250504_185229.png,Pleural_Thickening,0.74,2025-05-04 18:52:29,./data/uploads/xray_20250504_185229.png

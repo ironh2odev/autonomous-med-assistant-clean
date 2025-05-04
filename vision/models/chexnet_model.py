@@ -3,18 +3,24 @@
 import torch
 import torch.nn as nn
 from torchvision import models
+from torchvision.models import DenseNet121_Weights
 from PIL import Image
 from torchvision import transforms
 
 # === Model Setup ===
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Load DenseNet121 and modify for Chest X-ray 14 labels
-model = models.densenet121(pretrained=True)
+# Load DenseNet121 with updated 'weights' argument
+weights = DenseNet121_Weights.IMAGENET1K_V1
+model = models.densenet121(weights=weights)
+
+# Replace classifier for 14 chest X-ray labels
 num_features = model.classifier.in_features
 model.classifier = nn.Linear(num_features, 14)  # 14 diseases
 model = model.to(device)
 model.eval()
+
+print(f"[INFO] CheXNet model loaded on device: {device}")
 
 # Transformation
 transform = transforms.Compose([

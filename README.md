@@ -1,35 +1,55 @@
-# 🧠 Autonomous AI Medical Diagnosis & Treatment Recommender
+# 🩺 Autonomous AI Medical Diagnosis Assistant
 
-**Summary:**
-A full-stack AI-powered application capable of analyzing chest X-ray images, predicting possible diagnoses, and providing LLM-generated medical explanations. Built to simulate real-world medical assistant tools and demonstrate expertise in end-to-end autonomous AI product development.
+An AI-powered medical assistant that analyzes chest X-rays, provides symptom consultations, and checks drug interactions—all in one app.
 
-**Key Features:**
+## 🚀 Features
 
-**📸 Computer Vision Model** (ViT dummy backbone) for chest X-ray anomaly detection and diagnosis prediction.
+✅ Upload chest X-ray images and receive AI-generated diagnoses  
+✅ Symptom consultation using GPT-based medical assistant  
+✅ Drug interaction checker powered by Graph Neural Networks  
+✅ View, download, and delete diagnosis history  
+✅ Clean Streamlit front-end + FastAPI back-end  
+✅ Ready for deployment on Railway / Render / AWS
 
-**🤖 LLM Integration** for generating natural language explanations of the AI's predictions.
+---
 
-**🖥️ Streamlit Frontend** enabling X-ray uploads, prediction visualization, and historical diagnosis tracking.
+## 🏗️ Tech Stack
 
-**☁️ Cloud Deployment** via Dockerized infrastructure on Railway, making the app publicly accessible.
+| Layer            | Tech                      |
+|-----------------|--------------------------|
+| Front-End        | Streamlit                |
+| Back-End         | FastAPI                  |
+| AI Models        | Vision Transformer (ViT), GPT-4, GNN (DGL) |
+| Infrastructure   | Docker, Railway          |
+| Data Logging     | CSV (pandas)             |
 
-**📂 Modular Architecture** supporting future expansion (drug interaction prediction, RL-based treatment planning).
+---
 
-**🔒 Environment Configuration & Infrastructure using** .env, requirements.txt, Dockerfile for production readiness.
+## 📦 Installation
 
-**Technologies Used:**
+1️⃣ Clone the repo:
 
-Python • Streamlit • Docker • Railway (Cloud Deployment)
+```bash
+git clone https://github.com/ironh2odev/ai-medical-assistant.git
+cd ai-medical-assistant
 
-Vision Transformers (ViT) • OpenAI GPT-4 API (for explanation)
+2️⃣ Create a virtual environment:
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
 
-**Future Enhancements Planned:**
+3️⃣ Install dependencies:
+pip install -r requirements.txt
 
-🧠 GNN-based Drug Interaction Prediction
+4️⃣ Create a .env file:
+OPENAI_API_KEY=your-key-here
+API_URL=http://localhost:8000
+BACKEND_URL=http://localhost:8000/diagnose
+API_CONSULT_URL=http://localhost:8000/consult
+API_CHECK_DRUG_URL=http://localhost:8000/check-drug-safety
+LOG_FILE=data/diagnosis_log.csv
 
-🩺 RL-based Personalized Treatment Planning
+5️⃣ Run the backend (FastAPI):
+uvicorn api.main:app --reload --port 8000
 
-📄 PDF Export of AI Diagnoses and Summaries
-
-🛡️ Authentication, User Profiles, and Data Security
-
+6️⃣ Run the frontenf (Streamlit):
+streamlit run ui/app.py

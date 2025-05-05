@@ -1,30 +1,23 @@
-# Dockerfile
+# Use official Python image
+FROM python:3.10-slim
 
-# Use an official lightweight Python image
-FROM python:3.11-slim
-
-# Set working directory inside container
+# Set work directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Copy requirements
+COPY requirements.txt .
 
-# Copy project files into container
+# Install system packages needed for torch/dgl
+RUN apt-get update && apt-get install -y build-essential python3-dev git \
+    && pip install --upgrade pip \
+    && pip install -r requirements.txt \
+    && apt-get clean
+
+# Copy app code
 COPY . .
 
-# Install Python dependencies
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+# Expose port
+EXPOSE 8080
 
-# Expose ports (FastAPI on 8000, Streamlit on 8501)
-EXPOSE 8000
-EXPOSE 8501
-
-# Start both servers
-CMD ["bash", "start.sh"]
+# Run app
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080"]

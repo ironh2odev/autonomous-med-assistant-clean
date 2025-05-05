@@ -13,4 +13,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["python", "-m", "api.main"]
+CMD ["python", "api.main"]

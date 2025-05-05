@@ -11,9 +11,6 @@ RUN apt-get update && apt-get install -y build-essential python3-dev git \
 
 COPY . .
 
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
 EXPOSE 8080
 
-CMD ["/app/start.sh"]
+CMD ["python", "-m", "api.main"]

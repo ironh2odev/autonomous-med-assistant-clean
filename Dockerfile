@@ -16,8 +16,8 @@ RUN apt-get update && apt-get install -y build-essential python3-dev git \
 # Copy app code
 COPY . .
 
-# Expose port
+# Expose the dynamic port
 EXPOSE 8080
 
-# Run app
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# ✅ Use shell command so $PORT expands
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port $PORT"]

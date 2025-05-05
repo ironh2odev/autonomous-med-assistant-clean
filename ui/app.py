@@ -1,149 +1,134 @@
-# ui/app.py
+# api/main.py
 
-from dotenv import load_dotenv
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from vision.models.inference import diagnose_image
+from utils.medical_agent import consult_symptoms, check_drug_interactions
 import os
-import sys
-import streamlit as st
-import pandas as pd
-import requests
-from PIL import Image
-import io
+import csv
+from datetime import datetime
+from typing import List
+import logging
+import uvicorn
 
-# === Load environment variables ===
-load_dotenv(override=True)
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-from utils.explainer import explain_diagnosis
-from utils.medical_agent import consult_symptoms
-
-# === Config ===
-API_BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000/diagnose")
+# === Environment Variables ===
+DATA_DIR = os.getenv("UPLOAD_DIR", "data/uploads")
 LOG_FILE = os.getenv("LOG_FILE", "data/diagnosis_log.csv")
-LOGO_PATH = os.getenv("LOGO_PATH", "assets/logo.png")
+os.makedirs(DATA_DIR, exist_ok=True)
 
-st.set_page_config(
-    page_title="AI Medical Diagnosis Assistant",
-    page_icon="🩺",
-    layout="centered"
+# === FastAPI App ===
+app = FastAPI(
+    title="🩺 Autonomous AI Medical Assistant",
+    description="🩻 Diagnose X-rays, consult symptoms, and check drug interactions.",
+    version="1.1.0",
 )
 
-# === Sidebar ===
-st.sidebar.image(LOGO_PATH, width=100)
-st.sidebar.markdown("<br>", unsafe_allow_html=True)
-st.sidebar.title("🧭 Navigation")
-
-page = st.sidebar.radio(
-    "Select a page:",
-    ["🩻 Upload X-ray", "📝 Symptom Consultation", "📜 View Past Diagnoses"],
+# === CORS ===
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-st.sidebar.markdown(f"📍 **Current Page:** {page}")
+# === Pydantic Models ===
+class SymptomsInput(BaseModel):
+    symptoms: str
 
-# === Upload X-ray Page ===
-if page == "🩻 Upload X-ray":
-    st.markdown("<h1 style='text-align: center;'>🩻 Autonomous AI Medical Diagnosis Assistant</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center;'>Upload a chest X-ray image to receive an AI-generated diagnosis.</p>", unsafe_allow_html=True)
+class DrugCheckInput(BaseModel):
+    drug_ids: List[int]
 
-    uploaded_file = st.file_uploader("📤 Upload X-ray Image (.png, .jpg, .jpeg)", type=["png", "jpg", "jpeg"])
+# === Routes ===
+@app.get("/")
+def root():
+    return {"message": "Welcome to the 🩺 Autonomous AI Medical Assistant API!"}
 
-    if uploaded_file:
-        file_bytes = uploaded_file.read()
-        image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
-        st.image(image, caption="📸 Uploaded X-ray", use_container_width=True)
+@app.post("/diagnose")
+async def diagnose(file: UploadFile = File(...)):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"xray_{timestamp}.png"
+    file_path = os.path.join(DATA_DIR, filename)
 
-        st.divider()
-        st.markdown("<h3 style='text-align: center;'>🔬 Analyzing your X-ray...</h3>", unsafe_allow_html=True)
+    try:
+        contents = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+    except Exception as e:
+        logger.error(f"❌ Failed to save file: {e}")
+        return {"error": str(e)}
 
-        with st.spinner("Please wait while the AI doctor reviews..."):
-            try:
-                response = requests.post(API_BACKEND_URL, files={"file": (uploaded_file.name, file_bytes, uploaded_file.type)})
+    try:
+        result = diagnose_image(file_path)
+    except Exception as e:
+        logger.error(f"❌ Diagnosis error: {e}")
+        return {"error": str(e)}
 
-                if response.status_code == 200:
-                    result = response.json()
-                    st.balloons()
-                    st.success("✅ Diagnosis complete!")
+    try:
+        with open(LOG_FILE, "a", newline="") as f:
+            writer = csv.writer(f)
+            if f.tell() == 0:
+                writer.writerow(["filename", "diagnosis", "confidence", "timestamp", "image_path"])
+            writer.writerow([
+                filename,
+                result["diagnosis"],
+                result["confidence"],
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                file_path
+            ])
+    except Exception as e:
+        logger.warning(f"⚠️ Could not log diagnosis: {e}")
 
-                    st.markdown(f"### 🏷️ **Diagnosis:** `{result['diagnosis']}`")
-                    st.info(f"📊 **Confidence:** `{result['confidence'] * 100:.2f}%`")
+    return result
 
-                    if "note" in result:
-                        st.markdown(f"🩺 _Doctor’s Note:_ {result['note']}")
+@app.post("/consult")
+def consult(input: SymptomsInput):
+    try:
+        output = consult_symptoms(input.symptoms)
+    except Exception as e:
+        logger.error(f"❌ Consultation error: {e}")
+        return {"error": str(e)}
+    return {"consultation": output}
 
-                    st.divider()
-                    st.markdown("### 🧠 Medical Explanation")
+@app.post("/check-drug-safety")
+def check_safety(input: DrugCheckInput):
+    try:
+        results = check_drug_interactions(input.drug_ids)
+    except Exception as e:
+        logger.error(f"❌ Interaction check error: {e}")
+        return {"error": str(e)}
+    return {"interactions": results}
 
-                    with st.spinner("Summarizing in simple language..."):
-                        explanation = explain_diagnosis(result['diagnosis'])
-                        st.markdown(f"💬 _{explanation}_")
+@app.delete("/delete-diagnosis")
+def delete_diagnosis(filename: str):
+    """🗑️ Delete a diagnosis record by filename from log and delete file."""
+    try:
+        rows = []
+        with open(LOG_FILE, "r") as f:
+            reader = csv.DictReader(f)
+            rows = [row for row in reader if row["filename"] != filename]
+        with open(LOG_FILE, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=["filename", "diagnosis", "confidence", "timestamp", "image_path"])
+            writer.writeheader()
+            writer.writerows(rows)
+        file_path = os.path.join(DATA_DIR, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        return {"status": "deleted", "filename": filename}
+    except Exception as e:
+        logger.error(f"❌ Delete error: {e}")
+        return {"error": str(e)}
 
-                    st.divider()
-                    if st.button("📤 Upload Another X-ray"):
-                        st.rerun()  # ✅ updated here
-
-                else:
-                    st.error(f"❌ Backend error {response.status_code}: {response.text}")
-
-            except Exception as e:
-                st.error(f"🚨 Request failed: {e}")
-
-# === Symptom Consultation Page ===
-elif page == "📝 Symptom Consultation":
-    st.markdown("<h1 style='text-align: center;'>🩺 AI Medical Consultation</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center;'>Describe your symptoms for preliminary advice (⚠️ does not replace a doctor).</p>", unsafe_allow_html=True)
-
-    symptoms = st.text_area("📝 Describe your symptoms:")
-
-    if st.button("🔍 Analyze Symptoms"):
-        if symptoms.strip() == "":
-            st.warning("⚠️ Please enter some symptoms.")
-        else:
-            with st.spinner("Analyzing your symptoms..."):
-                advice = consult_symptoms(symptoms)
-                st.success("✅ Preliminary medical advice:")
-                st.markdown(f"💬 {advice}")
-
-# === View Past Diagnoses Page ===
-elif page == "📜 View Past Diagnoses":
-    st.markdown("<h1 style='text-align: center;'>📜 Diagnosis History</h1>", unsafe_allow_html=True)
-
-    if os.path.exists(LOG_FILE):
-        df = pd.read_csv(LOG_FILE)
-
-        if not df.empty:
-            if "image_path" in df.columns:
-                st.dataframe(df.drop(columns=["image_path"]))
-            else:
-                st.dataframe(df)
-
-            selected_timestamp = st.selectbox(
-                "Select a timestamp to view image:",
-                df["timestamp"].tolist()
-            )
-
-            if selected_timestamp:
-                row = df[df["timestamp"] == selected_timestamp].iloc[0]
-
-                if "image_path" in row and os.path.exists(row["image_path"]):
-                    image = Image.open(row["image_path"])
-                    st.image(image, caption=f"🕒 {selected_timestamp}", use_container_width=True)
-                else:
-                    st.warning("🕵️ This entry was created before image saving was implemented.")
-
-            st.markdown("---")
-            csv_data = df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Download Diagnosis Log CSV",
-                data=csv_data,
-                file_name="diagnosis_log.csv",
-                mime="text/csv",
-            )
-
-            if st.button("🗑️ Delete All Diagnoses"):
-                os.remove(LOG_FILE)
-                st.warning("🗑️ Diagnosis history deleted.")
-                st.rerun()  # ✅ updated here
-
-        else:
-            st.info("🕊️ No diagnoses logged yet.")
-    else:
-        st.info("📁 No diagnosis history found.")
+# === Run Server Dynamically if main ===
+if __name__ == "__main__":
+    env_port = os.getenv("PORT")
+    try:
+        port = int(env_port) if env_port and env_port.isdigit() else 8000
+    except Exception:
+        port = 8000
+    logger.info(f"🚀 Starting API server on port {port}")
+    uvicorn.run("api.main:app", host="0.0.0.0", port=port)

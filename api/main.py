@@ -4,7 +4,7 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from vision.models.inference import diagnose_image
-from utils.medical_agent import consult_symptoms, check_drug_interactions
+from utils.medical_agent import consult_symptoms  # Removed check_drug_interactions
 import os
 import csv
 from datetime import datetime
@@ -20,7 +20,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 app = FastAPI(
     title="🩺 Autonomous AI Medical Assistant",
-    description="🩻 Diagnose X-rays, consult symptoms, and check drug interactions.",
+    description="🩻 Diagnose X-rays and consult symptoms.",
     version="1.1.0",
 )
 
@@ -35,8 +35,8 @@ app.add_middleware(
 class SymptomsInput(BaseModel):
     symptoms: str
 
-class DrugCheckInput(BaseModel):
-    drug_ids: List[int]
+# class DrugCheckInput(BaseModel):    # temporarily removed
+#     drug_ids: List[int]
 
 @app.get("/")
 def root():
@@ -88,14 +88,14 @@ def consult(input: SymptomsInput):
         return {"error": str(e)}
     return {"consultation": output}
 
-@app.post("/check-drug-safety")
-def check_safety(input: DrugCheckInput):
-    try:
-        results = check_drug_interactions(input.drug_ids)
-    except Exception as e:
-        logger.error(f"❌ Interaction check error: {e}")
-        return {"error": str(e)}
-    return {"interactions": results}
+# @app.post("/check-drug-safety")   # temporarily disabled
+# def check_safety(input: DrugCheckInput):
+#     try:
+#         results = check_drug_interactions(input.drug_ids)
+#     except Exception as e:
+#         logger.error(f"❌ Interaction check error: {e}")
+#         return {"error": str(e)}
+#     return {"interactions": results}
 
 @app.delete("/delete-diagnosis")
 def delete_diagnosis(filename: str):

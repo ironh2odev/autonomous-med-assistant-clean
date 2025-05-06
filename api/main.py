@@ -19,8 +19,8 @@ LOG_FILE = os.getenv("LOG_FILE", "data/diagnosis_log.csv")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 app = FastAPI(
-    title="Autonomous AI Medical Assistant",
-    description="API for diagnosing X-rays, consulting symptoms, and checking drug interactions.",
+    title="🩺 Autonomous AI Medical Assistant",
+    description="🩻 Diagnose X-rays, consult symptoms, and check drug interactions.",
     version="1.1.0",
 )
 
@@ -40,7 +40,7 @@ class DrugCheckInput(BaseModel):
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to the Autonomous AI Medical Assistant API!"}
+    return {"message": "Welcome to the 🩺 Autonomous AI Medical Assistant API!"}
 
 @app.post("/diagnose")
 async def diagnose(file: UploadFile = File(...)):
@@ -53,13 +53,13 @@ async def diagnose(file: UploadFile = File(...)):
         with open(file_path, "wb") as f:
             f.write(contents)
     except Exception as e:
-        logger.error(f"Failed to save file: {e}")
+        logger.error(f"❌ Failed to save file: {e}")
         return {"error": str(e)}
 
     try:
         result = diagnose_image(file_path)
     except Exception as e:
-        logger.error(f"Diagnosis error: {e}")
+        logger.error(f"❌ Diagnosis error: {e}")
         return {"error": str(e)}
 
     try:
@@ -75,7 +75,7 @@ async def diagnose(file: UploadFile = File(...)):
                 file_path
             ])
     except Exception as e:
-        logger.warning(f"Could not log diagnosis: {e}")
+        logger.warning(f"⚠️ Could not log diagnosis: {e}")
 
     return result
 
@@ -84,7 +84,7 @@ def consult(input: SymptomsInput):
     try:
         output = consult_symptoms(input.symptoms)
     except Exception as e:
-        logger.error(f"Consultation error: {e}")
+        logger.error(f"❌ Consultation error: {e}")
         return {"error": str(e)}
     return {"consultation": output}
 
@@ -93,13 +93,13 @@ def check_safety(input: DrugCheckInput):
     try:
         results = check_drug_interactions(input.drug_ids)
     except Exception as e:
-        logger.error(f"Interaction check error: {e}")
+        logger.error(f"❌ Interaction check error: {e}")
         return {"error": str(e)}
     return {"interactions": results}
 
 @app.delete("/delete-diagnosis")
 def delete_diagnosis(filename: str):
-    """Delete a diagnosis record by filename from log and delete file."""
+    """🗑️ Delete a diagnosis record by filename from log and delete file."""
     try:
         rows = []
         with open(LOG_FILE, "r") as f:
@@ -114,5 +114,5 @@ def delete_diagnosis(filename: str):
             os.remove(file_path)
         return {"status": "deleted", "filename": filename}
     except Exception as e:
-        logger.error(f"Delete error: {e}")
+        logger.error(f"❌ Delete error: {e}")
         return {"error": str(e)}

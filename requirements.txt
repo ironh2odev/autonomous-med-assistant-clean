@@ -7,7 +7,7 @@ cachetools==5.5.2
 certifi==2025.4.26
 charset-normalizer==3.4.1
 click==8.1.8
-https://data.dgl.ai/wheels/dgl-2.1.0-cp310-cp310-manylinux2014_x86_64.whl
+dgl==0.9.1
 distro==1.9.0
 exceptiongroup==1.2.2
 fastapi==0.115.12

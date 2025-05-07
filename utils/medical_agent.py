@@ -3,9 +3,11 @@
 import openai
 import os
 from dotenv import load_dotenv
-import torch
-# from gnn.models.gnn_model import DrugGNN  # ⏸️ temporarily disabled
 import logging
+
+# COMMENT OUT DGL / GNN imports
+# import torch
+# from gnn.models.gnn_model import DrugGNN
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -15,9 +17,9 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 client = openai.OpenAI()
 
+# COMMENT OUT GNN model setup
 # MODEL_PATH = os.getenv("MODEL_PATH", "gnn/models/gnn_model.pt")
 # GRAPH_PATH = os.getenv("GRAPH_PATH", "uploads/drugs_graph.pt")
-
 # INPUT_DIM = int(os.getenv("INPUT_DIM", 10))
 # HIDDEN_DIM = int(os.getenv("HIDDEN_DIM", 16))
 # OUTPUT_DIM = int(os.getenv("OUTPUT_DIM", 2))
@@ -34,7 +36,7 @@ client = openai.OpenAI()
 def consult_symptoms(symptoms: str) -> str:
     prompt = f"""
     You are a professional medical assistant. The patient reports:
-    "{symptoms}"
+    \"{symptoms}\"
 
     Provide:
     1. Likely diagnosis
@@ -51,7 +53,8 @@ def consult_symptoms(symptoms: str) -> str:
     )
     return response.choices[0].message.content.strip()
 
-# def check_drug_interactions(drug_ids: list[int]) -> list[dict]:  # ⏸️ temporarily disabled
+# COMMENT OUT the drug interactions function
+# def check_drug_interactions(drug_ids: list[int]) -> list[dict]:
 #     import dgl
 #     try:
 #         graph_data = torch.load(GRAPH_PATH)

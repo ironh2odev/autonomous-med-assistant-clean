@@ -17,7 +17,9 @@ from utils.explainer import explain_diagnosis
 from utils.medical_agent import consult_symptoms
 
 # === Config ===
-API_BACKEND_URL = "https://autonomous-med-assistant-clean.onrender.com/diagnose"
+API_BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000/diagnose")
+API_CONSULT_URL = os.getenv("API_CONSULT_URL", "http://localhost:8000/consult")
+API_CHECK_DRUG_URL = os.getenv("API_CHECK_DRUG_URL", "http://localhost:8000/check-drug-safety")
 LOG_FILE = os.getenv("LOG_FILE", "data/diagnosis_log.csv")
 LOGO_PATH = os.getenv("LOGO_PATH", "assets/logo.png")
 
@@ -27,7 +29,6 @@ st.set_page_config(
     layout="centered"
 )
 
-# === Sidebar ===
 st.sidebar.image(LOGO_PATH, width=100)
 st.sidebar.markdown("<br>", unsafe_allow_html=True)
 st.sidebar.title("🧭 Navigation")
@@ -39,7 +40,6 @@ page = st.sidebar.radio(
 
 st.sidebar.markdown(f"📍 **Current Page:** {page}")
 
-# === Upload X-ray Page ===
 if page == "🩻 Upload X-ray":
     st.markdown("<h1 style='text-align: center;'>🩻 Autonomous AI Medical Diagnosis Assistant</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center;'>Upload a chest X-ray image to receive an AI-generated diagnosis.</p>", unsafe_allow_html=True)
@@ -86,7 +86,6 @@ if page == "🩻 Upload X-ray":
             except Exception as e:
                 st.error(f"🚨 Request failed: {e}")
 
-# === Symptom Consultation Page ===
 elif page == "📝 Symptom Consultation":
     st.markdown("<h1 style='text-align: center;'>🩺 AI Medical Consultation</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center;'>Describe your symptoms for preliminary advice (⚠️ does not replace a doctor).</p>", unsafe_allow_html=True)
@@ -98,11 +97,17 @@ elif page == "📝 Symptom Consultation":
             st.warning("⚠️ Please enter some symptoms.")
         else:
             with st.spinner("Analyzing your symptoms..."):
-                advice = consult_symptoms(symptoms)
-                st.success("✅ Preliminary medical advice:")
-                st.markdown(f"💬 {advice}")
+                try:
+                    response = requests.post(API_CONSULT_URL, json={"symptoms": symptoms})
+                    if response.status_code == 200:
+                        result = response.json()
+                        st.success("✅ Preliminary medical advice:")
+                        st.markdown(f"💬 {result.get('consultation', 'No advice returned.')}")
+                    else:
+                        st.error(f"❌ Backend error {response.status_code}: {response.text}")
+                except Exception as e:
+                    st.error(f"🚨 Request failed: {e}")
 
-# === View Past Diagnoses Page ===
 elif page == "📜 View Past Diagnoses":
     st.markdown("<h1 style='text-align: center;'>📜 Diagnosis History</h1>", unsafe_allow_html=True)
 

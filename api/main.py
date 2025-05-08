@@ -24,9 +24,12 @@ app = FastAPI(
     version="1.1.0",
 )
 
+# ✅ Explicitly allow frontend Render domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://autonomous-med-assistant-frontend.onrender.com"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,9 +37,6 @@ app.add_middleware(
 
 class SymptomsInput(BaseModel):
     symptoms: str
-
-# class DrugCheckInput(BaseModel):    # temporarily removed
-#     drug_ids: List[int]
 
 @app.get("/")
 def root():
@@ -87,15 +87,6 @@ def consult(input: SymptomsInput):
         logger.error(f"❌ Consultation error: {e}")
         return {"error": str(e)}
     return {"consultation": output}
-
-# @app.post("/check-drug-safety")   # temporarily disabled
-# def check_safety(input: DrugCheckInput):
-#     try:
-#         results = check_drug_interactions(input.drug_ids)
-#     except Exception as e:
-#         logger.error(f"❌ Interaction check error: {e}")
-#         return {"error": str(e)}
-#     return {"interactions": results}
 
 @app.delete("/delete-diagnosis")
 def delete_diagnosis(filename: str):

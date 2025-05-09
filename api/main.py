@@ -4,27 +4,19 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from vision.models.inference import diagnose_image
-from utils.medical_agent import consult_symptoms  # Removed check_drug_interactions
-import os
-import csv
+from utils.medical_agent import consult_symptoms
 from datetime import datetime
-from typing import List
-import logging
+import os
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-DATA_DIR = os.getenv("UPLOAD_DIR", "data/uploads")
-LOG_FILE = os.getenv("LOG_FILE", "data/diagnosis_log.csv")
-os.makedirs(DATA_DIR, exist_ok=True)
+# In-memory store
+diagnosis_log = []
 
 app = FastAPI(
     title="🩺 Autonomous AI Medical Assistant",
     description="🩻 Diagnose X-rays and consult symptoms.",
-    version="1.1.0",
+    version="1.2.0",
 )
 
-# ✅ Explicitly allow frontend Render domain
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -44,66 +36,36 @@ def root():
 
 @app.post("/diagnose")
 async def diagnose(file: UploadFile = File(...)):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"xray_{timestamp}.png"
-    file_path = os.path.join(DATA_DIR, filename)
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    filename = file.filename
 
-    try:
-        contents = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(contents)
-    except Exception as e:
-        logger.error(f"❌ Failed to save file: {e}")
-        return {"error": str(e)}
+    contents = await file.read()
+    file_path = f"data/uploads/{filename}"
+    os.makedirs("data/uploads", exist_ok=True)
+    with open(file_path, "wb") as f:
+        f.write(contents)
 
-    try:
-        result = diagnose_image(file_path)
-    except Exception as e:
-        logger.error(f"❌ Diagnosis error: {e}")
-        return {"error": str(e)}
+    result = diagnose_image(file_path)
+    record = {
+        "filename": filename,
+        "diagnosis": result["diagnosis"],
+        "confidence": result["confidence"],
+        "timestamp": timestamp,
+        "image_path": file_path,
+    }
+    diagnosis_log.append(record)
+    return record
 
-    try:
-        with open(LOG_FILE, "a", newline="") as f:
-            writer = csv.writer(f)
-            if f.tell() == 0:
-                writer.writerow(["filename", "diagnosis", "confidence", "timestamp", "image_path"])
-            writer.writerow([
-                filename,
-                result["diagnosis"],
-                result["confidence"],
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                file_path
-            ])
-    except Exception as e:
-        logger.warning(f"⚠️ Could not log diagnosis: {e}")
-
-    return result
+@app.get("/diagnosis-log")
+def get_diagnosis_log():
+    return {"log": diagnosis_log}
 
 @app.post("/consult")
 def consult(input: SymptomsInput):
-    try:
-        output = consult_symptoms(input.symptoms)
-    except Exception as e:
-        logger.error(f"❌ Consultation error: {e}")
-        return {"error": str(e)}
+    output = consult_symptoms(input.symptoms)
     return {"consultation": output}
 
-@app.delete("/delete-diagnosis")
-def delete_diagnosis(filename: str):
-    """🗑️ Delete a diagnosis record by filename from log and delete file."""
-    try:
-        rows = []
-        with open(LOG_FILE, "r") as f:
-            reader = csv.DictReader(f)
-            rows = [row for row in reader if row["filename"] != filename]
-        with open(LOG_FILE, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=["filename", "diagnosis", "confidence", "timestamp", "image_path"])
-            writer.writeheader()
-            writer.writerows(rows)
-        file_path = os.path.join(DATA_DIR, filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        return {"status": "deleted", "filename": filename}
-    except Exception as e:
-        logger.error(f"❌ Delete error: {e}")
-        return {"error": str(e)}
+@app.delete("/delete-diagnoses")
+def delete_diagnoses():
+    diagnosis_log.clear()
+    return {"status": "cleared"}
